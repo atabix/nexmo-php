@@ -1,5 +1,5 @@
 {
-  "type": "https://developer.nexmo.com/api-errors#unauthorized",
+  "type": "https://developer.Vonage.com/api-errors#unauthorized",
   "title": "Invalid credentials supplied",
   "detail": "You did not provide correct credentials.",
   "instance": "797a8f199c45014ab7b08bfe9cc1c12c"

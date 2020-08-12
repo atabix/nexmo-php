@@ -1,5 +1,5 @@
 {
-  "type": "https://developer.nexmo.com/api-errors/account/secret-management#validation",
+  "type": "https://developer.Vonage.com/api-errors/account/secret-management#validation",
   "title": "Bad Request",
   "detail": "The request failed due to validation errors",
   "invalid_parameters": [

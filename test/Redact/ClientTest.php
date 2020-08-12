@@ -1,20 +1,20 @@
 <?php
 /**
- * Nexmo Client Library for PHP
+ * Vonage Client Library for PHP
  *
- * @copyright Copyright (c) 2016 Nexmo, Inc. (http://nexmo.com)
- * @license   https://github.com/Nexmo/nexmo-php/blob/master/LICENSE.txt MIT License
+ * @copyright Copyright (c) 2016 Vonage, Inc. (http://vonage.com)
+ * @license   https://github.com/vonage/vonage-php/blob/master/LICENSE.txt MIT License
  */
 
-namespace NexmoTest\Redact;
+namespace VonageTest\Redact;
 
 use Prophecy\Argument;
-use Nexmo\Redact\Client;
-use Nexmo\Client\Exception;
+use Vonage\Redact\Client;
+use Vonage\Client\Exception;
 use Zend\Diactoros\Response;
-use Nexmo\Client\APIResource;
+use Vonage\Client\APIResource;
 use PHPUnit\Framework\TestCase;
-use NexmoTest\Psr7AssertionTrait;
+use VonageTest\Psr7AssertionTrait;
 use Psr\Http\Message\RequestInterface;
 
 class ClientTest extends TestCase
@@ -26,7 +26,7 @@ class ClientTest extends TestCase
      */
     protected $apiClient;
 
-    protected $nexmoClient;
+    protected $VonageClient;
 
     /**
      * @var Client
@@ -35,16 +35,16 @@ class ClientTest extends TestCase
 
     public function setUp()
     {
-        $this->nexmoClient = $this->prophesize('Nexmo\Client');
-        $this->nexmoClient->getApiUrl()->willReturn('https://api.nexmo.com');
+        $this->VonageClient = $this->prophesize('Vonage\Client');
+        $this->VonageClient->getApiUrl()->willReturn('https://api.nexmo.com');
 
         $this->redact = new Client();
-        $this->redact->setClient($this->nexmoClient->reveal());
+        $this->redact->setClient($this->VonageClient->reveal());
     }
 
     public function testUrlAndMethod()
     {
-        $this->nexmoClient->send(Argument::that(function (RequestInterface $request) {
+        $this->VonageClient->send(Argument::that(function (RequestInterface $request) {
             $this->assertEquals('/v1/redact/transaction', $request->getUri()->getPath());
             $this->assertEquals('api.nexmo.com', $request->getUri()->getHost());
             $this->assertEquals('POST', $request->getMethod());
@@ -56,7 +56,7 @@ class ClientTest extends TestCase
     
     public function testNoOptions()
     {
-        $this->nexmoClient->send(Argument::that(function (RequestInterface $request) {
+        $this->VonageClient->send(Argument::that(function (RequestInterface $request) {
             $this->assertRequestJsonBodyContains('id', 'ABC123', $request);
             $this->assertRequestJsonBodyContains('product', 'sms', $request);
 
@@ -68,7 +68,7 @@ class ClientTest extends TestCase
 
     public function testWithOptions()
     {
-        $this->nexmoClient->send(Argument::that(function (RequestInterface $request) {
+        $this->VonageClient->send(Argument::that(function (RequestInterface $request) {
             $this->assertRequestJsonBodyContains('id', 'ABC123', $request);
             $this->assertRequestJsonBodyContains('product', 'sms', $request);
             $this->assertRequestJsonBodyContains('type', 'inbound', $request);
@@ -80,7 +80,7 @@ class ClientTest extends TestCase
 
     public function testOptionsDoNotOverwriteParams()
     {
-        $this->nexmoClient->send(Argument::that(function (RequestInterface $request) {
+        $this->VonageClient->send(Argument::that(function (RequestInterface $request) {
             $this->assertRequestJsonBodyContains('id', 'ABC123', $request);
             $this->assertRequestJsonBodyContains('product', 'sms', $request);
             $this->assertRequestJsonBodyContains('type', 'inbound', $request);
@@ -98,7 +98,7 @@ class ClientTest extends TestCase
         $this->expectException($expectedException);
         $this->expectExceptionMessage($expectedMessage);
 
-        $this->nexmoClient->send(Argument::that(function (RequestInterface $request) {
+        $this->VonageClient->send(Argument::that(function (RequestInterface $request) {
             return true;
         }))->shouldBeCalledTimes(1)->willReturn($this->getResponse($response, $code));
 
@@ -109,11 +109,11 @@ class ClientTest extends TestCase
     {
         return [
             'unauthorized' => ['unauthorized', 401, Exception\Request::class, "Unauthorized"],
-            'premature-redaction' => ['premature-redaction', 403, Exception\Request::class, "Premature Redaction - You must wait 60 minutes before redacting ID '0A000000B0C9A1234'. See https://developer.nexmo.com/api-errors/redact#premature-redaction"],
-            'unprovisioned' => ['unprovisioned', 403, Exception\Request::class, "Authorisation error - User=ABC123 is not provisioned to redact product=SMS. See https://developer.nexmo.com/api-errors#unprovisioned"],
-            'invalid-id' => ['invalid-id', 404, Exception\Request::class, "Invalid ID - ID '0A000000B0C9A1234' could not be found (type=MT). See https://developer.nexmo.com/api-errors#invalid-id"],
-            'invalid-json' => ['invalid-json', 422, Exception\Request::class, "Invalid JSON - Unexpected character ('\"' (code 34)): was expecting comma to separate Object entries. See https://developer.nexmo.com/api-errors#invalid-json"],
-            'unsupported-product' => ['unsupported-product', 422, Exception\Request::class, "Invalid Product - No product corresponding to supplied string sms2!. See https://developer.nexmo.com/api-errors/redact#invalid-product"],
+            'premature-redaction' => ['premature-redaction', 403, Exception\Request::class, "Premature Redaction - You must wait 60 minutes before redacting ID '0A000000B0C9A1234'. See https://developer.Vonage.com/api-errors/redact#premature-redaction"],
+            'unprovisioned' => ['unprovisioned', 403, Exception\Request::class, "Authorisation error - User=ABC123 is not provisioned to redact product=SMS. See https://developer.Vonage.com/api-errors#unprovisioned"],
+            'invalid-id' => ['invalid-id', 404, Exception\Request::class, "Invalid ID - ID '0A000000B0C9A1234' could not be found (type=MT). See https://developer.Vonage.com/api-errors#invalid-id"],
+            'invalid-json' => ['invalid-json', 422, Exception\Request::class, "Invalid JSON - Unexpected character ('\"' (code 34)): was expecting comma to separate Object entries. See https://developer.Vonage.com/api-errors#invalid-json"],
+            'unsupported-product' => ['unsupported-product', 422, Exception\Request::class, "Invalid Product - No product corresponding to supplied string sms2!. See https://developer.Vonage.com/api-errors/redact#invalid-product"],
             'unknown-error' => ['error', 500, Exception\Server::class, "Unexpected error"],
         ];
     }
