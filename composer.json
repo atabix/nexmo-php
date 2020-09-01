@@ -1,6 +1,6 @@
 {
-  "name": "vonage/client-core",
-  "description": "PHP Client for using Vonage's API.",
+  "name": "nexmo/client-core",
+  "description": "Deprecated PHP Client for using Vonage's API - please use vonage/client-core",
   "license": "MIT",
   "type": "library",
   "authors": [
