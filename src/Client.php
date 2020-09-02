@@ -551,6 +551,6 @@ class Client
 
     protected function getVersion()
     {
-        return \PackageVersions\Versions::getVersion('vonage/client-core');
+        return \PackageVersions\Versions::getVersion('nexmo/client-core');
     }
 }
