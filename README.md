@@ -8,15 +8,99 @@ Client Library for PHP
 
 <img src="https://developer.nexmo.com/assets/images/Vonage_Nexmo.svg" height="48px" alt="Nexmo is now known as Vonage" />
 
+<hr />
+
+## Support Notice
+This library and it's associated packages, `nexmo/client` and `nexmo/client-core` have transitioned into a "Maintenance Only" mode. For the next twelve (12) months, this library will only receive bug or security fixes. This library will officially be End of Life as of October 1st, 2021.
+
+We recommend users begin migrating over to https://github.com/vonage/vonage-php-sdk-core and the `vonage/client` and `vonage/client-core` packages for their applications. The Vonage packages fully support the `\Nexmo` namespace and should be a drop-in replacement for the Nexmo packages.
+
+If you have any questions, feel free to reach out to us at devrel@vonage.com or through our Community Slack at https://developer.nexmo.com/community/slack
+
+<hr />
+
 *This library requires a minimum PHP version of 7.2*
 
 This is the PHP client library for use Vonage's API. To use this, you'll need a Vonage account. Sign up [for free at 
 nexmo.com][signup].
 
+ * [Migration Instructions](#migration)
  * [Installation](#installation)
  * [Usage](#usage)
  * [Examples](#examples)
  * [Contributing](#contributing) 
+
+## Migration
+
+This package has officially moved to a "maintenance only" mode, and we highly suggest moving to `vonage/client` and `vonage/client-core` for all codebases. While we will be supporting this package with any needed bug or security fixes, no new features will be developed for this codebase, including new product releases. We are providing up to twelve (12) months of support to give users time to upgrade.
+
+We have tried to make the upgrade as seamless as possible for all users. 
+
+### Step 1 - Find out Current Versions
+
+**What we need:**
+
+* Do you have `nexmo/client` or `nexmo/client-core` requested?
+* What version of `nexmo/client-core` is installed
+
+The first thing we need to do is figure out what, and which versions, you have installed. The quickest way is to just open up `composer.json` and search for "nexmo/client" and "nexmo/client-core", and see which one you have. You should have either `nexmo/client` or `nexmo/client-core` requested in `composer.json`. Take note of which is in your `composer.json` file.
+
+To find out what version of `nexmo/client-core` you have installed, you can run:
+
+```bash
+composer show nexmo/client-core
+```
+
+This should give you the following output, of which we care about the "versions" line:
+
+```bash
+name     : nexmo/client-core
+descrip. : Deprecated PHP Client for using Vonage's API - please use vonage/client-core
+keywords : 
+versions : * 2.3.3
+type     : library
+license  : MIT License (MIT) (OSI approved) https://spdx.org/licenses/MIT.html#licenseText
+homepage : 
+source   : [git] https://github.com/Nexmo/nexmo-php.git bedc32d90871f8347b6a211602e919a1d4d45184
+dist     : [zip] https://api.github.com/repos/Nexmo/nexmo-php/zipball/bedc32d90871f8347b6a211602e919a1d4d45184 bedc32d90871f8347b6a211602e919a1d4d45184
+path     : /home/ctankersley/tmp/vrsions/vendor/nexmo/client-core
+names    : nexmo/client-core
+```
+
+Take note of that version, as it will determine your next steps.
+
+### Step 2 - Change the Packages
+
+#### I have `nexmo/client` in `composer.json`
+
+Updating the new packages is fairly painless in most cases. We need to remove the `nexmo/client` package and replace it with the `vonage/client` package. This can be done using Composer, as it will handle modifying your `composer.json` and `composer.lock` files for you.
+
+```bash
+composer remove nexmo/client
+composer require vonage/client:^2.3
+```
+
+Depending on the version of `nexmo/client-core` you have installed, you may need to do additional upgrade work. The new packages are designed to continue to work with the `\Nexmo` namespace, so all your existing code should continue to work. You can schedule a refactor at your leisure.
+
+* **`nexmo/client-core` >= v2.3.3** - Congrats, you are already using the new code! We just need to change the requested packages. Start using the `\Vonage` namespace for new code, and refactor existing code at your leisure.
+* **`nexmo/client-core` <= v2.2.3 but >= 2.0.0** - You are on the current major version, so the new packages are compatible with your current code. You should be able to safely upgrade to the newest Vonage packages without any changes to your code. Unless you have a specific reason for staying on an older version of 2.x, there should be no changes to your code. If you had a specific reason for holding back, you will have until October 1st, 2021, to make any necessary changes to your code and may want to schedule additional time for testing the upgrade.
+* **`nexmo/client-core` is not installed** - If you have `nexmo/client` defined but Composer shows that `nexmo/client-core` is not installed, this means you are on a much older version of the Nexmo library such as 1.x or an early Beta build. There may be significant changes to your codebase if you elect to switch to the Vonage packages, but keep in mind that even today your installation is not supported by the Nexmo packages. We support the currently released major version only, which is our 2.x release line. The 1.x and any earlier versions are not currently receiving any bug or security fixes, so we highly recommend you upgrade as soon as possible. 
+
+#### I have `nexmo/client-core` in `composer.json`
+
+Updating the new packages is fairly painless in most cases. We need to remove the `nexmo/client-core` package and replace it with the `vonage/client-core` package. This can be done using Composer, as it will handle modifying your `composer.json` and `composer.lock` files for you.
+
+```bash
+composer remove nexmo/client-core
+composer require vonage/client-core:^2.3
+```
+
+Depending on the version of `nexmo/client-core` you have installed, you may need to do additional upgrade work. The new packages are designed to continue to work with the `\Nexmo` namespace, so all your existing code should continue to work. You can schedule a refactor at your leisure.
+
+We continue to support PSR-18 and HTTPlug-compatible HTTP clients, and if you are using a custom client these should continue to work. 
+
+* **`nexmo/client-core` >= v2.3.3** - Congrats, you are already using the new code! We just need to change the requested packages. Start using the `\Vonage` namespace for new code, and refactor existing code at your leisure.
+* **`nexmo/client-core` <= v2.2.3 but >= 2.0.0** - You are on the current major version, so the new packages are compatible with your current code. You should be able to safely upgrade to the newest Vonage packages without any changes to your code. Unless you have a specific reason for staying on an older version of 2.x, there should be no changes to your code. If you had a specific reason for holding back, you will have until October 1st, 2021, to make any necessary changes to your code and may want to schedule additional time for testing the upgrade.
 
 Installation
 ------------
