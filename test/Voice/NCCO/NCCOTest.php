@@ -1,24 +1,36 @@
 <?php
+
+/**
+ * Vonage Client Library for PHP
+ *
+ * @copyright Copyright (c) 2016-2020 Vonage, Inc. (http://vonage.com)
+ * @license https://github.com/Vonage/vonage-php-sdk-core/blob/master/LICENSE.txt Apache License 2.0
+ */
+
 declare(strict_types=1);
 
 namespace VonageTest\Voice\NCCO;
 
+use PHPUnit\Framework\TestCase;
 use Vonage\Voice\NCCO\Action\Record;
 use Vonage\Voice\NCCO\NCCO;
-use PHPUnit\Framework\TestCase;
+
+use function json_decode;
+use function json_encode;
 
 class NCCOTest extends TestCase
 {
-    public function testCanCreateNCCOFromArray()
+    public function testCanCreateNCCOFromArray(): void
     {
         $data = [
             [
                 'action' => 'talk',
                 'bargeIn' => 'false',
-                'level' => 0,
-                'loop' => 1,
+                'level' => '0',
+                'loop' => '1',
                 'text' => 'Thank you for trying Vonage',
-                'voiceName' => 'kimberly'
+                'language' => 'en-US',
+                'style' => '0',
             ],
             [
                 'action' => 'record',

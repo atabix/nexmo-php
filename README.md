@@ -156,7 +156,7 @@ Examples
 
 To use [Vonage's SMS API][doc_sms] to send an SMS message, call the `$client->sms()->send()` method.
 
-**A message object** is is used to create the SMS messages. Each message type can be constructed with the 
+**A message object** is used to create the SMS messages. Each message type can be constructed with the 
 required parameters, and a fluent interface provides access to optional parameters.
 
 ```php
@@ -199,7 +199,7 @@ create an inbound message object from a webhook:
 
 ```php
 try {
-    $inbound = \Vonage\SMS\InboundSMS::createFromGlobals();
+    $inbound = \Vonage\SMS\Webhook\Factory::createFromGlobals();
     error_log($inbound->getText());
 } catch (\InvalidArgumentException $e) {
     error_log('invalid message');
@@ -220,7 +220,7 @@ The SMS API supports the ability to sign messages by generating and adding a sig
 
 Both your application and Vonage need to agree on which algorithm is used. In the [dashboard](https://dashboard.nexmo.com), visit your account settings page and under "API Settings" you can select the algorithm to use. This is also the location where you will find your "Signature Secret" (it's different from the API secret).
 
-Create a client using these credentials and the algorithm to use, for example:
+Create a client using these credentials, and the algorithm to use, for example:
 
 ```php
 $client = new Vonage\Client(new Vonage\Client\Credentials\SignatureSecret(API_KEY, SIGNATURE_SECRET, 'sha256'));
@@ -232,7 +232,7 @@ Using this client, your SMS API messages will be sent as signed messages.
 
 _You may also like to read the [documentation about message signing](https://developer.nexmo.com/concepts/guides/signing-messages)._
 
-If you have message signing enabled for incoming messages, the SMS webhook will include the fields `sig`, `nonce` and `timestamp`. To verify the signature is from Vonage, you create a Signature object using the incoming data, your signature secret and the signature method. Then use the `check()` method with the actual signature that was received (usually `_GET['sig']`) to make sure that it is correct.
+If you have message signing enabled for incoming messages, the SMS webhook will include the fields `sig`, `nonce` and `timestamp`. To verify the signature is from Vonage, you create a Signature object using the incoming data, your signature secret and the signature method. Then use the `check()` method with the actual signature that was received (usually `_GET['sig']`) to make sure, that it is correct.
 
 ```php
 $signature = new \Vonage\Client\Signature($_GET, SIGNATURE_SECRET, 'sha256');
@@ -246,7 +246,7 @@ Using your signature secret and the other supplied parameters, the signature can
 ### Starting a Verification
 
 Vonage's [Verify API][doc_verify] makes it easy to prove that a user has provided their own phone number during signup,
-or implement second factor authentication during signin.
+or implement second factor authentication during sign in.
 
 You can start a verification process using code like this:
 
@@ -344,7 +344,11 @@ $outboundCall
 $response = $client->voice()->createOutboundCall($outboundCall);
 ```
 
-Or you can provide an NCCO directly in the POST request
+### Building a call with NCCO Actions
+
+Full parameter lists for NCCO Actions can be found in the [Voice API Docs](https://developer.nexmo.com/voice/voice-api/ncco-reference).
+
+Each of these examples uses the following structure to add actions to a call:
 
 ```php
 $outboundCall = new \Vonage\Voice\OutboundCall(
@@ -352,11 +356,133 @@ $outboundCall = new \Vonage\Voice\OutboundCall(
     new \Vonage\Voice\Endpoint\Phone('14843335555')
 );
 $ncco = new NCCO();
+
+//ADD ACTIONS TO THE NCCO OBJECT HERE
+
+$outboundCall->setNCCO($ncco);
+
+$response = $client->voice()->createOutboundCall($outboundCall);
+```
+
+### Record a call
+
+```php
+$outboundCall = new \Vonage\Voice\OutboundCall(
+    new \Vonage\Voice\Endpoint\Phone('14843331234'),
+    new \Vonage\Voice\Endpoint\Phone('14843335555')
+);
+
+$ncco = new NCCO();
+$ncco->addAction(\Vonage\Voice\NCCO\Action\Record::factory([
+    'eventUrl' => 'https://webhook.url'
+]);
+$outboundCall->setNCCO($ncco);
+
+$response = $client->voice()->createOutboundCall($outboundCall);
+```
+
+Your webhook url will receive a payload like this:
+
+```
+{
+  "start_time": "2020-10-29T14:30:24Z",
+  "recording_url": "https://api.nexmo.com/v1/files/<recording-id>",
+  "size": 27918,
+  "recording_uuid": "<recording-id>",
+  "end_time": "2020-10-29T14:30:31Z",
+  "conversation_uuid": "<conversation-id>",
+  "timestamp": "2020-10-29T14:30:31.619Z"
+}
+```
+
+You can then fetch and store the recording like this:
+
+```
+$recordingId = '<recording-id>';
+$recordingUrl = 'https://api.nexmo.com/v1/files/' . $recordingId;
+$data = $client->get($recordingUrl);
+file_put_contents($recordingId.'.mp3', $data->getBody());
+```
+
+### Send a text to voice call
+```php
+$outboundCall = new \Vonage\Voice\OutboundCall(
+    new \Vonage\Voice\Endpoint\Phone('14843331234'),
+    new \Vonage\Voice\Endpoint\Phone('14843335555')
+);
+
+$ncco = new NCCO();
 $ncco->addAction(new \Vonage\Voice\NCCO\Action\Talk('This is a text to speech call from Vonage'));
 $outboundCall->setNCCO($ncco);
 
 $response = $client->voice()->createOutboundCall($outboundCall);
 ```
+
+### Stream an audio file on a call
+```php
+$outboundCall = new \Vonage\Voice\OutboundCall(
+    new \Vonage\Voice\Endpoint\Phone('14843331234'),
+    new \Vonage\Voice\Endpoint\Phone('14843335555')
+);
+
+$ncco = new NCCO();
+$ncco->addAction(new \Vonage\Voice\NCCO\Action\Stream('https://my-mp3.url'));
+$outboundCall->setNCCO($ncco);
+
+$response = $client->voice()->createOutboundCall($outboundCall);
+```
+
+### Collect user input from a call
+
+Supports keypad entry as well as voice. NB. the input action must follow an action with `bargeIn` set to `true`
+
+```php
+$outboundCall = new \Vonage\Voice\OutboundCall(
+    new \Vonage\Voice\Endpoint\Phone('14843331234'),
+    new \Vonage\Voice\Endpoint\Phone('14843335555')
+);
+
+$ncco = new NCCO();
+
+$ncco->addAction(\Vonage\Voice\NCCO\Action\Talk::factory('Please record your name.',[
+  'bargeIn' => true,
+]));
+
+$ncco->addAction(\Vonage\Voice\NCCO\Action\Input::factory([
+  'eventUrl' => 'https://webhook.url',
+  'type' => [
+    'speech',
+  ],
+  'speech' => [
+    'endOnSilence' => true,
+  ],
+]));
+
+$outboundCall->setNCCO($ncco);
+
+$response = $client->voice()->createOutboundCall($outboundCall);
+```
+
+The webhook URL will receive a payload containing the input from the user with relative confidence ratings for speech input.
+
+### Send a notification to a webhook url
+
+```php
+$outboundCall = new \Vonage\Voice\OutboundCall(
+    new \Vonage\Voice\Endpoint\Phone('14843331234'),
+    new \Vonage\Voice\Endpoint\Phone('14843335555')
+);
+
+$ncco = new NCCO();    
+$ncco->addAction(new \Vonage\Voice\NCCO\Action\Talk('We are just testing the notify function, you do not need to do anything.'));
+$ncco->addAction(new \Vonage\Voice\NCCO\Action\Notify([
+  'foo' => 'bar',
+], new Vonage\Voice\Webhook('https://webhook.url')));
+$outboundCall->setNCCO($ncco);
+
+$response = $client->voice()->createOutboundCall($outboundCall);
+```
+The webhook URL will receive a payload as specified in the request.
 
 ### Fetching a Call
 
@@ -502,7 +628,7 @@ $response = $client->numbers()->searchOwned($filter);
 ```
 
 `application_id`:
-* Supply an application ID to get all of the numbers associated with the requestion application
+* Supply an application ID to get all the numbers associated with the requesting application
 
 ```php
 $filter = new \Vonage\Numbers\Filter\OwnedNumbers();
@@ -601,7 +727,7 @@ try {
 
 #### Prefix Pricing
 
-If you know the prefix of a country that you want to call, you can use the `prefix-pricing` endpoint to
+If you know the prefix of a country you want to call, you can use the `prefix-pricing` endpoint to
 find out costs to call that number. Each prefix can return multiple countries (e.g. `1` returns `US`, `CA` and `UM`):
 
 ```php
@@ -709,10 +835,10 @@ Check out the [documentation](https://developer.nexmo.com/number-insight/code-sn
 Over time, the Vonage APIs evolve and add new features, change how existing 
 features work, and deprecate and remove older methods and features. To help
 developers know when deprecation changes are being made, the SDK will trigger
-an `E_USER_DEPRECATION` warning. These warnings will not stop the exectution
+an `E_USER_DEPRECATION` warning. These warnings will not stop the execution
 of code, but can be an annoyance in production environments.
 
-To help with this, by default these notices are supressed. In development,
+To help with this, by default these notices are suppressed. In development,
 you can enable these warnings by passing an additional configuration option
 to the `\Vonage\Client` constructor, called `show_deprecations`. Enabling this
 option will show all deprecation notices.
@@ -727,7 +853,7 @@ $client = new Vonage\Client(
 ```
 
 If you notice an excessive amount of deprecation notices in production
-environments, make sure that this configuration option is absent, or at least
+environments, make sure the configuration option is absent, or at least
 set to `false`.
 
 ### `unable to get local issuer certificate`
@@ -768,21 +894,21 @@ When things go wrong, you'll receive an `Exception`. The Vonage exception classe
 
 ### Composer installation fails due to Guzzle Adapter
 
-If you have a conflicting package installation that cannot co-exist with our recommended `guzzlehttp/guzzle` package, then you may install the package `vonage/client-core` along with any package that satisfies the `php-http/client-implementation` requirement.
+If you have a conflicting package installation that cannot co-exist with our recommended `guzzlehttp/guzzle` package, then you may install the package `vonage/client-core` along with any package satisfying the `php-http/client-implementation` requirement.
 
 See the [Packagist page for client-implementation](https://packagist.org/providers/php-http/client-implementation) for options.
 
 Contributing
 ------------
 
-This library is actively developed and we love to hear from you! Please feel free to [create an issue][issues] or [open a pull request][pulls] with your questions, comments, suggestions and feedback.
+This library is actively developed, and we love to hear from you! Please feel free to [create an issue][issues] or [open a pull request][pulls] with your questions, comments, suggestions and feedback.
 
 [signup]: https://dashboard.nexmo.com/sign-up?utm_source=DEV_REL&utm_medium=github&utm_campaign=php-client-library
 [doc_sms]: https://developer.nexmo.com/messaging/sms/overview
 [doc_inbound]: https://developer.nexmo.com/messaging/sms/guides/inbound-sms
 [doc_verify]: https://developer.nexmo.com/verify/overview
 [license]: LICENSE.txt
-[send_example]: examples/send.php
+[send_example]: https://github.com/Vonage/vonage-php-code-snippets/blob/master/sms/send-sms.php
 [spec]: https://github.com/Nexmo/client-library-specification
 [issues]: https://github.com/Vonage/vonage-php-core/issues
 [pulls]: https://github.com/Vonage/vonage-php-core/pulls

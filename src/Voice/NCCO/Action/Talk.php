@@ -1,7 +1,19 @@
 <?php
+
+/**
+ * Vonage Client Library for PHP
+ *
+ * @copyright Copyright (c) 2016-2020 Vonage, Inc. (http://vonage.com)
+ * @license https://github.com/Vonage/vonage-php-sdk-core/blob/master/LICENSE.txt Apache License 2.0
+ */
+
 declare(strict_types=1);
 
 namespace Vonage\Voice\NCCO\Action;
+
+use function array_key_exists;
+use function filter_var;
+use function is_null;
 
 class Talk implements ActionInterface
 {
@@ -9,6 +21,16 @@ class Talk implements ActionInterface
      * @var bool
      */
     protected $bargeIn;
+
+    /**
+     * @var string
+     */
+    protected $language;
+
+    /**
+     * @var int
+     */
+    protected $languageStyle = 0;
 
     /**
      * @var float
@@ -27,6 +49,7 @@ class Talk implements ActionInterface
 
     /**
      * @var string
+     * @deprecated Use $language and $languageStyle
      */
     protected $voiceName;
 
@@ -38,7 +61,7 @@ class Talk implements ActionInterface
     /**
      * @param array{text: string, bargeIn?: bool, level?: float, loop?: int, voiceName?: string} $data
      */
-    public static function factory(string $text, array $data): Talk
+    public static function factory(string $text, array $data) : Talk
     {
         $talk = new Talk($text);
 
@@ -62,6 +85,14 @@ class Talk implements ActionInterface
 
         if (array_key_exists('voiceName', $data)) {
             $talk->setVoiceName($data['voiceName']);
+        }
+
+        if (array_key_exists('language', $data)) {
+            if (array_key_exists('style', $data)) {
+                $talk->setLanguage($data['language'], (int) $data['style']);
+            } else {
+                $talk->setLanguage($data['language']);
+            }
         }
         
         return $talk;
@@ -87,6 +118,9 @@ class Talk implements ActionInterface
         return $this->text;
     }
 
+    /**
+     * @deprecated use getLanguage() and getLanguageStyle() instead
+     */
     public function getVoiceName() : ?string
     {
         return $this->voiceName;
@@ -95,39 +129,67 @@ class Talk implements ActionInterface
     /**
      * @return array{action: string, bargeIn: bool, level: float, loop: int, text: string, voiceName: string}
      */
-    public function jsonSerialize()
+    public function jsonSerialize() : array
     {
         return $this->toNCCOArray();
     }
 
+    /**
+     * @return $this
+     */
     public function setBargeIn(bool $value) : self
     {
         $this->bargeIn = $value;
         return $this;
     }
 
+    /**
+     * @return $this
+     */
     public function setLevel(float $level) : self
     {
         $this->level = $level;
-        return $this;
-    }
 
-    public function setLoop(int $times) : self
-    {
-        $this->loop = $times;
-        return $this;
-    }
-
-    public function setVoiceName(string $name) : self
-    {
-        $this->voiceName = $name;
         return $this;
     }
 
     /**
-     * @return array{action: string, bargeIn: bool, level: float, loop: int, text: string, voiceName: string}
+     * @return $this
      */
-    public function toNCCOArray(): array
+    public function setLoop(int $times) : self
+    {
+        $this->loop = $times;
+
+        return $this;
+    }
+
+    /**
+     * @deprecated Use setLanguage()
+     * @return $this
+     */
+    public function setVoiceName(string $name) : self
+    {
+        trigger_error(
+            'Voice Name is deprecated, please use setLanguage()',
+            E_USER_DEPRECATED
+        );
+
+        if ($this->getLanguage()) {
+            trigger_error(
+                'Language already set. Please use only Language or Voice Name',
+                E_USER_WARNING
+            );
+        }
+
+        $this->voiceName = $name;
+
+        return $this;
+    }
+
+    /**
+     * @return array{action: string, bargeIn: bool, level: string, loop: string, text: string, voiceName: string, language: string, style: string}
+     */
+    public function toNCCOArray() : array
     {
         $data = [
             'action' => 'talk',
@@ -139,17 +201,47 @@ class Talk implements ActionInterface
         }
 
         if (!is_null($this->getLevel())) {
-            $data['level'] = (string) $this->getLevel();
+            $data['level'] = (string)$this->getLevel();
         }
 
         if (!is_null($this->getLoop())) {
-            $data['loop'] = (string) $this->getLoop();
+            $data['loop'] = (string)$this->getLoop();
         }
 
         if ($this->getVoiceName()) {
             $data['voiceName'] = $this->getVoiceName();
         }
 
+        if ($this->getLanguage()) {
+            $data['language'] = $this->getLanguage();
+            $data['style'] = (string) $this->getLanguageStyle();
+        }
+
         return $data;
+    }
+
+    public function setLanguage(string $language, int $style = 0) : self
+    {
+        if ($this->getVoiceName()) {
+            trigger_error(
+                'Voice Name already set. Please use only Language or Voice Name',
+                E_USER_WARNING
+            );
+        }
+
+        $this->language = $language;
+        $this->languageStyle = $style;
+
+        return $this;
+    }
+
+    public function getLanguage() : ?string
+    {
+        return $this->language;
+    }
+
+    public function getLanguageStyle() : int
+    {
+        return $this->languageStyle;
     }
 }
