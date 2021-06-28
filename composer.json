@@ -1,6 +1,6 @@
 {
   "name": "nexmo/client-core",
-  "description": "Deprecated PHP Client for using Vonage's API - please use vonage/client-core",
+  "description": "Fixed for Atabix Deprecated PHP Client for using Vonage's API - please use vonage/client-core",
   "license": "Apache-2.0",
   "type": "library",
   "homepage": "https://developer.nexmo.com",
