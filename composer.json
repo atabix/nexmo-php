@@ -1,5 +1,5 @@
 {
-  "name": "nexmo/client-core",
+  "name": "atabix/nexmo-client-core",
   "description": "Fixed for Atabix Deprecated PHP Client for using Vonage's API - please use vonage/client-core",
   "license": "Apache-2.0",
   "type": "library",
