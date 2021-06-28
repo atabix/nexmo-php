@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Vonage Client Library for PHP
+ * Vonage Client Library for PHP.
  *
  * @copyright Copyright (c) 2016-2020 Vonage, Inc. (http://vonage.com)
  * @license https://github.com/Vonage/vonage-php-sdk-core/blob/master/LICENSE.txt Apache License 2.0
@@ -11,12 +11,21 @@ declare(strict_types=1);
 
 namespace Vonage;
 
+use function array_key_exists;
+use function array_merge;
+use function call_user_func_array;
+use function get_class;
 use Http\Client\HttpClient;
+use function http_build_query;
+use function implode;
 use InvalidArgumentException;
+use function is_null;
+use function is_string;
+use function json_encode;
 use Laminas\Diactoros\Request;
 use Laminas\Diactoros\Uri;
 use Lcobucci\JWT\Token;
-use PackageVersions\Versions;
+use function method_exists;
 use Psr\Container\ContainerInterface;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -25,6 +34,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 use RuntimeException;
+use function set_error_handler;
+use function str_replace;
+use function strpos;
+use function unserialize;
 use Vonage\Account\ClientFactory;
 use Vonage\Application\ClientFactory as ApplicationClientFactory;
 use Vonage\Call\Collection;
@@ -45,57 +58,39 @@ use Vonage\Client\Credentials\OAuth;
 use Vonage\Client\Credentials\SignatureSecret;
 use Vonage\Client\Exception\Exception as ClientException;
 use Vonage\Client\Factory\FactoryInterface;
+
 use Vonage\Client\Factory\MapFactory;
-use Vonage\Client\Signature;
 use Vonage\Conversations\ClientFactory as ConversationsClientFactory;
 use Vonage\Conversion\ClientFactory as ConversionClientFactory;
 use Vonage\Entity\EntityInterface;
 use Vonage\Insights\ClientFactory as InsightsClientFactory;
 use Vonage\Logger\LoggerAwareInterface;
+use Vonage\Logger\LoggerTrait;
 use Vonage\Message\Client as MessageClient;
 use Vonage\Numbers\ClientFactory as NumbersClientFactory;
 use Vonage\Redact\ClientFactory as RedactClientFactory;
 use Vonage\Secrets\ClientFactory as SecretsClientFactory;
 use Vonage\SMS\ClientFactory as SMSClientFactory;
+use Vonage\User\ClientFactory as UserClientFactory;
 use Vonage\Verify\ClientFactory as VerifyClientFactory;
 use Vonage\Verify\Verification;
 use Vonage\Voice\ClientFactory as VoiceClientFactory;
 
-use function array_key_exists;
-use function array_merge;
-use function base64_encode;
-use function call_user_func_array;
-use function get_class;
-use function http_build_query;
-use function implode;
-use function is_null;
-use function is_string;
-use function json_decode;
-use function json_encode;
-use function method_exists;
-use function parse_str;
-use function set_error_handler;
-use function str_replace;
-use function strpos;
-use function unserialize;
-use Vonage\Logger\LoggerTrait;
-use Vonage\User\ClientFactory as UserClientFactory;
-
 /**
  * Vonage API Client, allows access to the API from PHP.
  *
- * @method Account\Client account()
- * @method Message\Client message()
- * @method Application\Client applications()
- * @method Conversion\Client conversion()
- * @method Insights\Client insights()
- * @method Numbers\Client numbers()
- * @method Redact\Client redact()
- * @method Secrets\Client secrets()
- * @method SMS\Client sms()
- * @method Verify\Client  verify()
- * @method Voice\Client voice()
- * @method User\Collection user()
+ * @method Account\Client          account()
+ * @method Message\Client          message()
+ * @method Application\Client      applications()
+ * @method Conversion\Client       conversion()
+ * @method Insights\Client         insights()
+ * @method Numbers\Client          numbers()
+ * @method Redact\Client           redact()
+ * @method Secrets\Client          secrets()
+ * @method SMS\Client              sms()
+ * @method Verify\Client           verify()
+ * @method Voice\Client            voice()
+ * @method User\Collection         user()
  * @method Conversation\Collection conversation()
  *
  * @property string restUrl
@@ -110,14 +105,14 @@ class Client implements LoggerAwareInterface
     public const BASE_REST = 'https://rest.nexmo.com';
 
     /**
-     * API Credentials
+     * API Credentials.
      *
      * @var CredentialsInterface
      */
     protected $credentials;
 
     /**
-     * Http Client
+     * Http Client.
      *
      * @var HttpClient
      */
@@ -149,20 +144,10 @@ class Client implements LoggerAwareInterface
     public function __construct(CredentialsInterface $credentials, $options = [], ?ClientInterface $client = null)
     {
         if (is_null($client)) {
-            // Since the user did not pass a client, try and make a client
-            // using the Guzzle 6 adapter or Guzzle 7 (depending on availability)
-            list($guzzleVersion) = explode('@', Versions::getVersion('guzzlehttp/guzzle'), 1);
-            $guzzleVersion = (float) $guzzleVersion;
-
-            if ($guzzleVersion >= 6.0 && $guzzleVersion < 7) {
-                /** @noinspection CallableParameterUseCaseInTypeContextInspection */
-                /** @noinspection PhpUndefinedNamespaceInspection */
-                /** @noinspection PhpUndefinedClassInspection */
-                $client = new \Http\Adapter\Guzzle6\Client();
-            }
-
-            if ($guzzleVersion >= 7.0 && $guzzleVersion < 8.0) {
+            if (class_exists(\GuzzleHttp\Client::class)) {
                 $client = new \GuzzleHttp\Client();
+            } elseif (class_exists(\Http\Adapter\Guzzle6\Client::class)) {
+                $client = new \Http\Adapter\Guzzle6\Client();
             }
         }
 
@@ -211,22 +196,22 @@ class Client implements LoggerAwareInterface
             new MapFactory(
                 [
                     // Legacy Namespaces
-                    'message' => MessageClient::class,
-                    'calls' => Collection::class,
+                    'message'      => MessageClient::class,
+                    'calls'        => Collection::class,
                     'conversation' => ConversationsClientFactory::class,
-                    'user' => UserClientFactory::class,
+                    'user'         => UserClientFactory::class,
 
                     // Registered Services by name
-                    'account' => ClientFactory::class,
+                    'account'      => ClientFactory::class,
                     'applications' => ApplicationClientFactory::class,
-                    'conversion' => ConversionClientFactory::class,
-                    'insights' => InsightsClientFactory::class,
-                    'numbers' => NumbersClientFactory::class,
-                    'redact' => RedactClientFactory::class,
-                    'secrets' => SecretsClientFactory::class,
-                    'sms' => SMSClientFactory::class,
-                    'verify' => VerifyClientFactory::class,
-                    'voice' => VoiceClientFactory::class,
+                    'conversion'   => ConversionClientFactory::class,
+                    'insights'     => InsightsClientFactory::class,
+                    'numbers'      => NumbersClientFactory::class,
+                    'redact'       => RedactClientFactory::class,
+                    'secrets'      => SecretsClientFactory::class,
+                    'sms'          => SMSClientFactory::class,
+                    'verify'       => VerifyClientFactory::class,
+                    'voice'        => VoiceClientFactory::class,
 
                     // Additional utility classes
                     APIResource::class => APIResource::class,
@@ -306,12 +291,15 @@ class Client implements LoggerAwareInterface
         switch ($request->getHeaderLine('content-type')) {
             case 'application/json':
                 $handler = new SignatureBodyHandler();
+
                 break;
             case 'application/x-www-form-urlencoded':
                 $handler = new SignatureBodyFormHandler();
+
                 break;
             default:
                 $handler = new SignatureQueryHandler();
+
                 break;
         }
 
@@ -329,9 +317,11 @@ class Client implements LoggerAwareInterface
                 } else {
                     $handler = new TokenBodyHandler();
                 }
+
                 break;
             case 'application/x-www-form-urlencoded':
                 $handler = new TokenBodyFormHandler();
+
                 break;
             default:
                 if (static::requiresBasicAuth($request)) {
@@ -339,6 +329,7 @@ class Client implements LoggerAwareInterface
                 } else {
                     $handler = new TokenQueryHandler();
                 }
+
                 break;
         }
 
@@ -358,7 +349,7 @@ class Client implements LoggerAwareInterface
     }
 
     /**
-     * Takes a URL and a key=>value array to generate a GET PSR-7 request object
+     * Takes a URL and a key=>value array to generate a GET PSR-7 request object.
      *
      * @throws ClientExceptionInterface
      * @throws ClientException
@@ -374,7 +365,7 @@ class Client implements LoggerAwareInterface
     }
 
     /**
-     * Takes a URL and a key=>value array to generate a POST PSR-7 request object
+     * Takes a URL and a key=>value array to generate a POST PSR-7 request object.
      *
      * @throws ClientExceptionInterface
      * @throws ClientException
@@ -394,7 +385,7 @@ class Client implements LoggerAwareInterface
     }
 
     /**
-     * Takes a URL and a key=>value array to generate a POST PSR-7 request object
+     * Takes a URL and a key=>value array to generate a POST PSR-7 request object.
      *
      * @throws ClientExceptionInterface
      * @throws ClientException
@@ -414,7 +405,7 @@ class Client implements LoggerAwareInterface
     }
 
     /**
-     * Takes a URL and a key=>value array to generate a PUT PSR-7 request object
+     * Takes a URL and a key=>value array to generate a PUT PSR-7 request object.
      *
      * @throws ClientExceptionInterface
      * @throws ClientException
@@ -434,7 +425,7 @@ class Client implements LoggerAwareInterface
     }
 
     /**
-     * Takes a URL and a key=>value array to generate a DELETE PSR-7 request object
+     * Takes a URL and a key=>value array to generate a DELETE PSR-7 request object.
      *
      * @throws ClientExceptionInterface
      * @throws ClientException
@@ -478,7 +469,7 @@ class Client implements LoggerAwareInterface
         //allow any part of the URI to be replaced with a simple search
         if (isset($this->options['url'])) {
             foreach ($this->options['url'] as $search => $replace) {
-                $uri = (string)$request->getUri();
+                $uri = (string) $request->getUri();
                 $new = str_replace($search, $replace, $uri);
 
                 if ($uri !== $new) {
@@ -517,9 +508,9 @@ class Client implements LoggerAwareInterface
                 LogLevel::DEBUG,
                 'Request ' . $id,
                 [
-                    'url' => $request->getUri()->__toString(),
+                    'url'     => $request->getUri()->__toString(),
                     'headers' => $request->getHeaders(),
-                    'body' => explode("\n", $request->getBody()->__toString())
+                    'body'    => explode("\n", $request->getBody()->__toString()),
                 ]
             );
             $this->log(
@@ -527,7 +518,7 @@ class Client implements LoggerAwareInterface
                 'Response ' . $id,
                 [
                     'headers ' => $response->getHeaders(),
-                    'body' => explode("\n", $response->getBody()->__toString())
+                    'body'     => explode("\n", $response->getBody()->__toString()),
                 ]
             );
 
@@ -638,7 +629,7 @@ class Client implements LoggerAwareInterface
 
     protected function getVersion(): string
     {
-        return Versions::getVersion('nexmo/client-core');
+        return '2.9.0';
     }
 
     public function getLogger(): ?LoggerInterface
